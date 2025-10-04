@@ -51,23 +51,36 @@ function doPlanning(node, priceData) {
   const endIndexes = [];
   let currentStatus = from < (to === 0 && to !== from ? 24 : to) ? "Outside" : "StartMissing";
   let hour;
+  let currentHourStart = null;
+  
   startTimes.forEach((st, i) => {
     hour = DateTime.fromISO(st).hour;
-    if (hour === to && to === from && currentStatus === "Inside") {
-      endIndexes.push(i - 1);
-    }
-    if (hour === to && to !== from && i > 0 ) {
-      if(currentStatus !== "StartMissing") {
+    
+    // Check if we're starting a new hour and need to handle transitions
+    if (currentHourStart !== hour) {
+      // Handle end of period when we reach the "to" hour
+      if (currentHourStart === to && to === from && currentStatus === "Inside") {
         endIndexes.push(i - 1);
       }
-      currentStatus = "Outside";
+      if (currentHourStart === to && to !== from && i > 0) {
+        if (currentStatus !== "StartMissing") {
+          endIndexes.push(i - 1);
+        }
+        currentStatus = "Outside";
+      }
+      
+      // Handle start of period when we reach the "from" hour
+      if (hour === from) {
+        currentStatus = "Inside";
+        startIndexes.push(i);
+      }
+      
+      currentHourStart = hour;
     }
-    if (hour === from) {
-      currentStatus = "Inside";
-      startIndexes.push(i);
-    }
+    
     periodStatus[i] = currentStatus;
   });
+  
   if (currentStatus === "Inside" && hour !== (to === 0 ? 23 : to - 1)) {
     // Last period incomplete
     let i = periodStatus.length - 1;
@@ -75,7 +88,7 @@ function doPlanning(node, priceData) {
       periodStatus[i] = "EndMissing";
       hour = DateTime.fromISO(startTimes[i]).hour;
       i--;
-    } while (periodStatus[i] === "Inside" && hour !== from);
+    } while (i >= 0 && periodStatus[i] === "Inside" && hour !== from);
     startIndexes.splice(startIndexes.length - 1, 1);
   }
   if (hour === (to === 0 ? 23 : to - 1)) {
@@ -95,21 +108,37 @@ function doPlanning(node, priceData) {
   });
 
   startIndexes.forEach((s, i) => {
-    makePlan(node, values, onOff, s, endIndexes[i]);
+    makePlan(node, values, onOff, s, endIndexes[i], priceData);
   });
 
   return onOff;
 }
 
-function makePlan(node, values, onOff, fromIndex, toIndex) {
+function makePlan(node, values, onOff, fromIndex, toIndex, priceData) {
   const valuesInPeriod = values.slice(fromIndex, toIndex + 1);
+  
+  // Detect the interval size by checking time differences between consecutive entries
+  let intervalsPerHour = 1; // Default to hourly
+  if (priceData && priceData.length > 1) {
+    const firstTime = DateTime.fromISO(priceData[0].start);
+    const secondTime = DateTime.fromISO(priceData[1].start);
+    const minutesDiff = secondTime.diff(firstTime, 'minutes').minutes;
+    if (minutesDiff === 15) {
+      intervalsPerHour = 4; // 15-minute intervals
+    } else if (minutesDiff === 30) {
+      intervalsPerHour = 2; // 30-minute intervals
+    }
+    // else keep intervalsPerHour = 1 for hourly data
+  }
+  
+  const intervalsOn = node.hoursOn * intervalsPerHour;
   const res = node.doNotSplit
-    ? getBestContinuous(valuesInPeriod, node.hoursOn)
-    : getBestX(valuesInPeriod, node.hoursOn);
+    ? getBestContinuous(valuesInPeriod, intervalsOn)
+    : getBestX(valuesInPeriod, intervalsOn);
   const sumPriceOn = res.reduce((p, v, i) => {
     return p + (v ? valuesInPeriod[i] : 0);
   }, 0);
-  const average = sumPriceOn / node.hoursOn;
+  const average = sumPriceOn / intervalsOn;
   res.forEach((v, i) => {
     onOff[fromIndex + i] =
       node.maxPrice == null
