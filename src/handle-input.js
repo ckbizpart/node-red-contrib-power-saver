@@ -57,11 +57,16 @@ function makePlanFromPriceData(node, msg, config, doPlanning, calcSavings) {
   // const prices = priceDataWithDayBefore.map((d) => d.value);
   const priceDatePerMinute = priceDataWithDayBefore.flatMap((d, i) => {
     const res = [];
-    const start = DateTime.fromISO(d.start);
-    const end = DateTime.fromISO(d.end ?? priceDataWithDayBefore[i + 1].start)
-    if(!end) {
-      console.error("End time is missing for price data entry", d);
-      return res
+    const start = DateTime.fromISO(d.start, { setZone: true });
+    const endValue = d.end ?? priceDataWithDayBefore[i + 1]?.start;
+    if (!endValue) {
+      console.error("End time is missing for price data entry at index", i, "total length", priceDataWithDayBefore.length);
+      return res;
+    }
+    const end = DateTime.fromISO(endValue, { setZone: true });
+    if (!end.isValid) {
+      console.error("End time is invalid for price data entry at index", i, endValue);
+      return res;
     }
     let minute = start
     while (minute < end) {
@@ -146,7 +151,7 @@ function addLastSwitchIfNoSchedule(schedule, minutes, config) {
   if (schedule.length > 0 && schedule[schedule.length - 1].value === config.outputIfNoSchedule) {
     return;
   }
-  const nexMinute = DateTime.fromISO(minutes[minutes.length - 1].start).plus({ minutes: 1 });
+  const nexMinute = DateTime.fromISO(minutes[minutes.length - 1].start, { setZone: true }).plus({ minutes: 1 });
   schedule.push({ time: nexMinute.toISO(), value: config.outputIfNoSchedule, countMinutes: null });
 }
 

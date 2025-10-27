@@ -662,4 +662,41 @@ describe("ps-strategy-lowest-price node", function () {
       n1.receive({ payload: makePayload(input, time) });
     });
   });
+  it("should handle 15-minute interval data (NordPool format)", function (done) {
+    const nordpoolData = require("./data/nordpool-15min-intervals.json");
+    const flow = [
+      {
+        id: "n1",
+        type: "ps-strategy-lowest-price",
+        name: "test name",
+        fromHour: "0",
+        fromMinute: "0",
+        toHour: "23",
+        toMinute: "59",
+        minutesOn: 60,
+        maxPrice: null,
+        doNotSplit: true,
+        sendCurrentValueWhenRescheduling: true,
+        outputIfNoSchedule: false,
+        outputOutsidePeriod: false,
+        wires: [["n3"], ["n4"], ["n2"]],
+      },
+      { id: "n2", type: "helper" },
+      { id: "n3", type: "helper" },
+      { id: "n4", type: "helper" },
+    ];
+    helper.load(lowestPrice, flow, function () {
+      const n1 = helper.getNode("n1");
+      const n2 = helper.getNode("n2");
+      n2.on("input", function (msg) {
+        expect(msg.payload).to.have.property("schedule");
+        expect(msg.payload.schedule).to.be.an("array");
+        expect(msg.payload.schedule.length).to.be.greaterThan(0);
+        n1.warn.should.not.be.called;
+        done();
+      });
+      const time = DateTime.fromISO(nordpoolData.priceData[10].start);
+      n1.receive({ payload: makePayload(nordpoolData, time) });
+    });
+  });
 });

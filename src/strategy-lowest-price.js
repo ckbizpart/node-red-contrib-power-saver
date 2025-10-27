@@ -64,8 +64,8 @@ function doPlanning(node, priceData) {
   let hour;
   let minute;
   startTimes.forEach((st, i) => {
-    hour = DateTime.fromISO(st).hour;
-    minute = hour * 60 + DateTime.fromISO(st).minute;
+    hour = DateTime.fromISO(st, { setZone: true }).hour;
+    minute = hour * 60 + DateTime.fromISO(st, { setZone: true }).minute;
     if (minute === to && to === from && currentStatus === "Inside") {
       endIndexes.push(i - 1);
     }
@@ -86,8 +86,8 @@ function doPlanning(node, priceData) {
     let i = periodStatus.length - 1;
     do {
       periodStatus[i] = "EndMissing";
-      hour = DateTime.fromISO(startTimes[i]).hour;
-      minute = hour * 60 + DateTime.fromISO(startTimes[i]).minute;
+      hour = DateTime.fromISO(startTimes[i], { setZone: true }).hour;
+      minute = hour * 60 + DateTime.fromISO(startTimes[i], { setZone: true }).minute;
       i--;
     } while (periodStatus[i] === "Inside" && minute !== from);
     startIndexes.splice(startIndexes.length - 1, 1);
