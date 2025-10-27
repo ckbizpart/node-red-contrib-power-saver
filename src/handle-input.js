@@ -151,8 +151,8 @@ function addLastSwitchIfNoSchedule(schedule, minutes, config) {
   if (schedule.length > 0 && schedule[schedule.length - 1].value === config.outputIfNoSchedule) {
     return;
   }
-  const nexMinute = DateTime.fromISO(minutes[minutes.length - 1].start, { setZone: true }).plus({ minutes: 1 });
-  schedule.push({ time: nexMinute.toISO(), value: config.outputIfNoSchedule, countMinutes: null });
+  const nextMinute = DateTime.fromISO(minutes[minutes.length - 1].start, { setZone: true }).plus({ minutes: 1 });
+  schedule.push({ time: nextMinute.toISO(), value: config.outputIfNoSchedule, countMinutes: null });
 }
 
 function loadDataJustBefore(node, dateDayBefore) {
