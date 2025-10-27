@@ -173,7 +173,7 @@ function makeSchedule(onOff, startTimes, endTime, initial = null) {
       res.push(prevRecord);
       prev = value;
     }
-    prevRecord.countMinutes = DateTime.fromISO(i + 1 < startTimes.length ? startTimes[i+1] : endTime).diff(DateTime.fromISO(prevRecord.time), "minutes").minutes;
+    prevRecord.countMinutes = DateTime.fromISO(i + 1 < startTimes.length ? startTimes[i+1] : endTime, { setZone: true }).diff(DateTime.fromISO(prevRecord.time, { setZone: true }), "minutes").minutes;
   }
   return res;
 }
